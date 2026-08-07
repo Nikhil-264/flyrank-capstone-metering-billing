@@ -9,10 +9,10 @@ never the other way around.
 | Plan | API calls / month | AI tokens / month |
 |---|---|---|
 | Free | 1,000 | 100,000 |
-| Pro | higher (define exact number in `app/config/pricing.py` once set — keep this table in sync) |
+| Pro | 100,000 | 10,000,000 |
 
 ## Token pricing rule (capstone §4.3, §14 Phase-4 resource)
-`total_cost = price(input) + price(cached_input) + price(output) + price(reasoning_as_output)`
+`total_cost_microcents = (input_tokens * input_rate) + (cached_input_tokens * cached_rate) + (output_tokens * output_rate) + (reasoning_tokens * output_rate)`
 
 - Input tokens and cached input tokens are **separate line items** —
   cached input is priced lower than fresh input. Never sum them first
@@ -37,8 +37,16 @@ enforcement) is pinned in `app/config/pricing.py`.
 ```
 Tenant used: 10,000 input tokens, 2,000 cached input tokens,
              3,000 output tokens, 500 reasoning tokens.
-Expected total = (10,000 × input_rate) + (2,000 × cached_rate)
-                + (3,000 × output_rate) + (500 × output_rate)
+Rates:
+- input_rate = 10 micro-cents / token (equivalent to $1.00 / M tokens)
+- cached_rate = 2 micro-cents / token (equivalent to $0.20 / M tokens)
+- output_rate = 30 micro-cents / token (equivalent to $3.00 / M tokens)
+
+Expected total = (10,000 * 10) + (2,000 * 2) + (3,000 * 30) + (500 * 30)
+               = 100,000 + 4,000 + 90,000 + 15,000
+               = 209,000 micro-cents
+               = 0.209 cents
 ```
 This worked example must match a pinned test exactly — see
 `rules/testing-standard.md`.
+

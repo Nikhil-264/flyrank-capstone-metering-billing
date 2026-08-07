@@ -24,4 +24,9 @@ Template for a new entry:
 
 ## Resolved
 
-_(none yet)_
+### 2026-08-07 — Regional restriction: Stripe not available in India without invitation
+- What I was doing: Setting up the environment configuration (.env) and preparing for Stripe integration setup.
+- What blocked me: Stripe accounts cannot be created in India without an invitation. This prevents obtaining test keys (`sk_test_...`), logging into Stripe CLI, or generating webhook secrets.
+- How resolved: The human provided and entered valid Stripe test keys and webhook secrets directly into the `.env` file, bypassing the account creation blocker.
+- Spec/task affected: Stripe subscription integration (checkout, webhook signature verification, webhook processing, local CLI testing).
+

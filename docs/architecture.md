@@ -39,7 +39,60 @@ imports SQLAlchemy models directly instead of going through a
 repository/interface, that's a flag — check `tech-debt-tracker.md`
 before "fixing" it in case it's an intentional trade-off already logged.
 
+## API Contracts
+
+### `POST /generate`
+- **Headers**:
+  - `Idempotency-Key`: `string` (Required, unique request tracking)
+  - `X-Tenant-ID`: `string` (Required, UUID identifying the tenant)
+- **Request Body**:
+  ```json
+  {
+    "prompt": "string",
+    "stream": false,
+    "mock_usage": {
+      "input_tokens": 1000,
+      "cached_input_tokens": 200,
+      "output_tokens": 300,
+      "reasoning_tokens": 50
+    }
+  }
+  ```
+- **Response Body (200 OK)**:
+  ```json
+  {
+    "idempotency_key": "string",
+    "tenant_id": "string",
+    "text": "Simulated generation response.",
+    "usage": {
+      "api_calls": 1,
+      "input_tokens": 1000,
+      "cached_input_tokens": 200,
+      "output_tokens": 300,
+      "reasoning_tokens": 50,
+      "cost_cents": 0.0209
+    }
+  }
+  ```
+- **Response Body (429 Too Many Requests — Quota Exceeded)**:
+  ```json
+  {
+    "error": "Quota Exceeded",
+    "message": "Usage quota exceeded. Monthly limit is 100,000 AI tokens, current usage is 99,850 AI tokens, requested 350 tokens.",
+    "code": "QUOTA_EXCEEDED"
+  }
+  ```
+- **Response Body (402 Payment Required — Inactive/Canceled Subscription)**:
+  ```json
+  {
+    "error": "Payment Required",
+    "message": "Active subscription required. Plan is currently 'canceled'. Please upgrade or pay your outstanding invoice to resume.",
+    "code": "PAYMENT_REQUIRED"
+  }
+  ```
+
 ## Diagram
 A rendered version of the flow above (for the README) lives at
 `docs/architecture-diagram.md` — keep both in sync when the flow
 changes.
+
