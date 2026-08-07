@@ -22,4 +22,6 @@ glossary: "Enforced before the action, not after").
   - A request that brings the usage exactly to the limit (e.g., request #1000 of 1000, or adding tokens that exactly hit `max_tokens`) is **allowed**.
   - A request that would exceed the limit (e.g., request #1001 of 1000, or adding tokens that would result in `current_tokens + requested_tokens > max_tokens`) is **rejected** with a `429 Too Many Requests` status code.
 - This rule is applied consistently across both API call limits and AI token limits.
+- **Simultaneous Enforcement**: Generation requests (`POST /generate`) count against both the **AI token quota** (based on requested tokens) and the **API call quota** (counting as exactly 1 API call). If either limit is exceeded, the request is rejected with a `429` status code.
+
 

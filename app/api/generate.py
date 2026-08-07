@@ -29,7 +29,7 @@ class UsageSummary(BaseModel):
     cached_input_tokens: int
     output_tokens: int
     reasoning_tokens: int
-    cost_cents: float
+    cost_microcents: int
 
 class GenerateResponse(BaseModel):
     idempotency_key: str
@@ -66,7 +66,7 @@ async def generate(
                 cached_input_tokens=existing_event.token_cached_input or 0,
                 output_tokens=existing_event.token_output or 0,
                 reasoning_tokens=existing_event.token_reasoning or 0,
-                cost_cents=existing_event.cost_microcents / 10000.0
+                cost_microcents=existing_event.cost_microcents
             )
         )
 
@@ -115,6 +115,6 @@ async def generate(
             cached_input_tokens=event.token_cached_input or 0,
             output_tokens=event.token_output or 0,
             reasoning_tokens=event.token_reasoning or 0,
-            cost_cents=event.cost_microcents / 10000.0
+            cost_microcents=event.cost_microcents
         )
     )

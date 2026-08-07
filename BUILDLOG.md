@@ -47,6 +47,12 @@ one-shot.
 - Accepted as-is / modified / rejected because: Accepted as-is, accurately aggregates all API requests.
 - If rejected or buggy: root cause + link to learnings.md entry, if any: token events not counted as API calls (recorded in learnings.md).
 
+### 2026-08-07 API response float removal and documentation update
+- Prompted for: Enforcing integer money end-to-end (changing `cost_cents` float to `cost_microcents` integer in generate response) and documenting simultaneous quota enforcement rules.
+- AI produced: Changed `cost_cents` (float) to `cost_microcents` (int) in `app/api/generate.py` response schema, and explicitly documented simultaneous enforcement in `rules/quota-and-status-codes.md`.
+- Accepted as-is / modified / rejected because: Accepted as-is, keeps money math strictly integer-based and rules clear.
+
+
 
 
 
