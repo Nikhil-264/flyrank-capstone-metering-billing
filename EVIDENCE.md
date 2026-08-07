@@ -37,7 +37,22 @@ transcript / log line, not a description of it.
 
 ## Phase 2 — Core Billing
 
-_(pending)_
+### [Phase 2] Metering & Idempotency Tests
+- Proof: The automated pytest suite validates the `MeterService.record()` method and the endpoint quota limits. All 10 tests pass successfully (basic API calls, cost calculation, sequential deduplication, tenant-based scoping, concurrent race-condition handling, 402 subscription checks, and call/token quota boundary rules).
+```
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.14.2, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 10 items
+
+tests/test_metering.py ......                                                                       [ 60%]
+tests/test_quota.py ....                                                                            [100%]
+
+=========================================== 10 passed in 1.83s ============================================
+```
 
 ## Phase 3 — Stripe Integration
 
