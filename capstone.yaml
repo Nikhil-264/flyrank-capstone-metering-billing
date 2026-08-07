@@ -27,6 +27,6 @@ scope:
   usage_types: 2    # api_calls, ai_tokens
   billable_endpoints: 1  # POST /generate
 
-non_goal: ""  # fill in from tasks/phase-1-design/SPECS.md
+non_goal: "Proration calculation on mid-cycle subscription downgrades, automatic PDF invoice generation, and email dispatch of invoices to users are non-goals for the core engine."
 
 status: in-progress  # in-progress | ships | solid | exceptional

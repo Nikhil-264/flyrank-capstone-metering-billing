@@ -17,9 +17,9 @@ glossary: "Enforced before the action, not after").
   without inspecting the database.
 
 ## Boundary honesty (capstone §2's "boundary honesty" hard part)
-- Explicitly test and document behavior at exactly the limit (request
-  #1000 of 1000), one under (#999), and one over (#1001). Pick one
-  documented rule (e.g. "the request that would exceed the limit is
-  rejected; the request that exactly reaches the limit is allowed") and
-  hold to it consistently — inconsistent boundary handling is a
-  correctness bug, not a style choice.
+- **Boundary Rule**: A request is allowed if `current_usage + requested_usage <= limit`.
+- **Behavior**:
+  - A request that brings the usage exactly to the limit (e.g., request #1000 of 1000, or adding tokens that exactly hit `max_tokens`) is **allowed**.
+  - A request that would exceed the limit (e.g., request #1001 of 1000, or adding tokens that would result in `current_tokens + requested_tokens > max_tokens`) is **rejected** with a `429 Too Many Requests` status code.
+- This rule is applied consistently across both API call limits and AI token limits.
+

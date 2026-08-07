@@ -6,14 +6,14 @@ implementation-level detail). Tick a box here only when the matching
 phase-level spec is fully checked AND evidence is pasted in `EVIDENCE.md`.
 
 ## Metering
-- [ ] ⚓ A billable action creates exactly one usage event, even under
+- [x] ⚓ A billable action creates exactly one usage event, even under
       retries — deduplicated by idempotency key. → `tasks/phase-2-core-billing/SPECS.md`
-- [ ] A test proves double-counting cannot happen.
+- [x] A test proves double-counting cannot happen.
 
 ## Quotas
-- [ ] ⚓ Usage is checked against the tenant's plan; over-limit requests
+- [x] ⚓ Usage is checked against the tenant's plan; over-limit requests
       are rejected. → `tasks/phase-2-core-billing/SPECS.md`
-- [ ] Responses carry correct status codes (429 / 402) and an explanatory
+- [x] Responses carry correct status codes (429 / 402) and an explanatory
       message.
 
 ## Cost calculation
