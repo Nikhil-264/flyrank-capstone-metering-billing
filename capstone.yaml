@@ -1,0 +1,32 @@
+# capstone.yaml — Submission Manifest
+# Keep in sync with reality. This is machine-checked (Layer-1 gate:
+# files present, `run` boots, `test` is green) before Layer-2 probes
+# ever run.
+
+project: usage-metering-billing-engine
+repo: https://github.com/<your-username>/flyrank-capstone-metering-billing
+stack:
+  language: python
+  framework: fastapi
+  database: postgresql
+  orm: sqlalchemy
+  migrations: alembic
+  payments: stripe-test-mode
+  testing: pytest
+
+run: docker compose up --build
+test: docker compose exec api pytest
+
+env_required:
+  - DATABASE_URL
+  - STRIPE_SECRET_KEY
+  - STRIPE_WEBHOOK_SECRET
+
+scope:
+  plans: 2          # Free, Pro
+  usage_types: 2    # api_calls, ai_tokens
+  billable_endpoints: 1  # POST /generate
+
+non_goal: ""  # fill in from tasks/phase-1-design/SPECS.md
+
+status: in-progress  # in-progress | ships | solid | exceptional
