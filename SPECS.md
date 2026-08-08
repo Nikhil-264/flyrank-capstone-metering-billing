@@ -23,8 +23,8 @@ phase-level spec is fully checked AND evidence is pasted in `EVIDENCE.md`.
 - [ ] Pricing constants are pinned in config and covered by tests.
 
 ## Stripe integration
-- [ ] ⚓ Subscription checkout works end-to-end in Stripe test mode. → `tasks/phase-3-stripe-integration/SPECS.md`
-- [ ] Webhooks verify signatures, ignore duplicate events, and update
+- [x] ⚓ Subscription checkout works end-to-end in Stripe test mode. → `tasks/phase-3-stripe-integration/SPECS.md`
+- [x] Webhooks verify signatures, ignore duplicate events, and update
       tenant plan/status.
 
 ## Data model, tests & documentation

@@ -52,8 +52,20 @@ one-shot.
 - AI produced: Changed `cost_cents` (float) to `cost_microcents` (int) in `app/api/generate.py` response schema, and explicitly documented simultaneous enforcement in `rules/quota-and-status-codes.md`.
 - Accepted as-is / modified / rejected because: Accepted as-is, keeps money math strictly integer-based and rules clear.
 
+### 2026-08-08 Webhook signature test helper correction
+- Prompted for: Generating signature header in unit tests using stripe library.
+- AI produced: Attempted calling `stripe.WebhookSignature.generate_header` (deprecated/removed) and `stripe.Webhook.generate_test_header_string` (unexposed/absent).
+- Accepted as-is / modified / rejected because: Rejected due to AttributeErrors. Replaced with a manual HMAC-SHA256 constructor using python's built-in `hmac` and `hashlib` modules for absolute compatibility.
 
+### 2026-08-08 Webhook payload Decimal type serialization error
+- Prompted for: Storing Stripe webhook payload dictionary to database JSONB column.
+- AI produced: Used `event.to_dict_recursive()` to convert the event object back to dictionary.
+- Accepted as-is / modified / rejected because: Rejected because stripe-python parses fee and amount fields as `Decimal` types, which are not JSON-serializable by standard encoders, causing db insert statements to roll back.
+- If rejected or buggy: root cause + link to learnings.md entry, if any: Modified code to use `json.loads(payload_bytes.decode('utf-8'))` which maps standard JSON integer/float types directly from Stripe.
 
-
-
+### 2026-08-08 Stripe subscription period dates missing (Basil+ API)
+- Prompted for: Accessing `current_period_start` and `current_period_end` from subscription object.
+- AI produced: Accessed attributes directly on subscription top-level (`sub.current_period_start`).
+- Accepted as-is / modified / rejected because: Rejected because Stripe API version `2025-03-31.basil` and newer (e.g. Dahlia) moved billing period fields down to individual items (`sub.items.data[0]`).
+- If rejected or buggy: root cause + link to learnings.md entry, if any: Root cause detailed in learnings.md. Created `_get_period_dates()` helper function.
 

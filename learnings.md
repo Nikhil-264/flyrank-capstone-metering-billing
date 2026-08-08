@@ -36,6 +36,7 @@ coordinator.
 - Root cause: The `/generate` endpoint records usage as a `UsageEvent` of `type="ai_token"` (tracking tokens used). When checking the API calls quota limit, the quota check was only summing the quantities of events of `type="api_call"`, and thus ignored the generate requests which are also API calls.
 - Systemic fix applied: Modified `QuotaService.check_quota()` to count total API calls as the sum of `quantity` of `api_call` events plus the count of `ai_token` event rows (representing generation requests).
 
-
-
-
+### 2026-08-08 — Stripe current_period_start/end fields moved to subscription item level in newer API versions
+- Symptom: Real Stripe webhook delivery triggers failed on subscription sync with `AttributeError: current_period_start`.
+- Root cause: In Stripe API version `2025-03-31.basil` and newer (including Dahlia `2026-07-29.dahlia` used by the test account), `current_period_start` and `current_period_end` are no longer top-level attributes of the Subscription object. Instead, they have been moved down to individual subscription items to support mixed-interval subscriptions.
+- Systemic fix applied: Created `_get_period_dates()` helper function in `stripe.py` webhook to extract timestamps from the first item under `items.data[0]` if they are missing at the subscription top-level, and added unit tests covering both legacy and new structures.

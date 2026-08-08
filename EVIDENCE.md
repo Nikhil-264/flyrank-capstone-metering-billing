@@ -56,7 +56,58 @@ tests/test_quota.py ....                                                        
 
 ## Phase 3 — Stripe Integration
 
-_(pending)_
+### [Phase 3] Stripe test account connected; test Products/Prices created for Free/Pro
+- Proof: Programmatic product "Pro Plan" lookup/creation with $49.00 USD monthly subscription price.
+- Checkout session creation response:
+```json
+{
+  "session_id": "cs_test_a14OmnBhscwXYv29HF69ODfiR46azNapj5JvKm0jb3hLmuLEtkHbcXNLUD",
+  "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_a14OmnBhscwXYv29HF69ODfiR46azNapj5JvKm0jb3hLmuLEtkHbcXNLUD"
+}
+```
+
+### [Phase 3] Webhook signature verification, event-ID dedup, and tenant plan syncing
+- Proof: Automated webhook tests verifying signature validation, 400 rejection for forged signatures, event-ID deduplication, and plan syncing:
+```
+tests/test_stripe_webhook.py ......                                                                 [100%]
+=========================================== 16 passed in 2.77s ============================================
+```
+
+### [Phase 3] GET /usage reflects the new plan immediately after webhook processing
+- Proof: Before and after `GET /usage` responses:
+Before payment:
+```json
+{
+  "tenant_id": "d721dfc3-c0ac-4250-b646-c03042a9995f",
+  "plan_id": "free",
+  "status": "active",
+  "usage": {
+    "api_calls": 0,
+    "input_tokens": 0,
+    "cached_input_tokens": 0,
+    "output_tokens": 0,
+    "reasoning_tokens": 0,
+    "cost_microcents": 0
+  }
+}
+```
+
+After payment completion and webhook delivery:
+```json
+{
+  "tenant_id": "d721dfc3-c0ac-4250-b646-c03042a9995f",
+  "plan_id": "pro",
+  "status": "active",
+  "usage": {
+    "api_calls": 0,
+    "input_tokens": 0,
+    "cached_input_tokens": 0,
+    "output_tokens": 0,
+    "reasoning_tokens": 0,
+    "cost_microcents": 0
+  }
+}
+```
 
 ## Phase 4 — Cost & Hardening
 

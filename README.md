@@ -31,19 +31,17 @@ docker compose up --build
 
 ## Run
 ```bash
-# fill in once app/ exists — e.g.:
-# docker compose exec api uvicorn app.main:app --reload
+docker compose up
 ```
 
 ## Test
 ```bash
-# fill in once tests/ exists — e.g.:
-# docker compose exec api pytest
+docker compose run --rm api pytest
 ```
 
 ## Local Stripe webhook testing
 ```bash
-stripe listen --forward-to localhost:<port>/webhooks/stripe
+stripe listen --forward-to localhost:8000/webhooks/stripe
 stripe trigger checkout.session.completed
 ```
 

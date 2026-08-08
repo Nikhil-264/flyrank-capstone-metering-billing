@@ -70,7 +70,7 @@ before "fixing" it in case it's an intentional trade-off already logged.
       "cached_input_tokens": 200,
       "output_tokens": 300,
       "reasoning_tokens": 50,
-      "cost_cents": 0.0209
+      "cost_microcents": 209000
     }
   }
   ```
@@ -90,6 +90,9 @@ before "fixing" it in case it's an intentional trade-off already logged.
     "code": "PAYMENT_REQUIRED"
   }
   ```
+
+> [!NOTE]
+> **Tenant Provisioning Requirement:** An active subscription row (defaulting to the `free` plan) must be provisioned in the database alongside any newly created Tenant. This database relationship ensures that subsequent calls to `POST /generate` do not fail with a 402/404 subscription status check.
 
 ## Diagram
 A rendered version of the flow above (for the README) lives at
