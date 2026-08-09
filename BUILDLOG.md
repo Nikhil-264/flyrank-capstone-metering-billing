@@ -75,3 +75,9 @@ one-shot.
 - Accepted as-is / modified / rejected because: Accepted with minor adjustments. The initial implementation rejected `requested_tokens == 0` for all calls, causing existing quota boundary tests (which omitted `mock_usage` and defaulted to 0 tokens) to fail with 400 Bad Request.
 - If rejected or buggy: root cause + link to learnings.md entry, if any: Omitted `mock_usage` defaulting to 0 tokens was rejected. Modified code to default to 1 token when `mock_usage` is omitted, resolving the test failures (detailed in learnings.md).
 
+### 2026-08-09 Phase 5 Startup automation, packaging, & Stripe reconciliation stretch goal
+- Prompted for: Automating migrations/seeding in docker compose on startup, updating README and capstone.yaml, performing EVIDENCE.md completeness audit, and implementing a Stripe reconciliation script with unit tests.
+- AI produced: Updated `docker-compose.yml` container command, created `reconcile_stripe.py` script and `tests/test_reconciliation.py`, updated `README.md` and `capstone.yaml`, logged the EVIDENCE.md audit process violation in `learnings.md`.
+- Accepted as-is / modified / rejected because: Accepted as-is. All unit tests ran and passed cleanly.
+
+

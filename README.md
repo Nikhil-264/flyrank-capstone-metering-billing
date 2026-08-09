@@ -9,13 +9,33 @@ environment this was built inside.
 > complete. Do not backfill it at the end — keep it honest as you go.
 
 ## Status
-See root `SPECS.md` for the live checklist. Current phase: **Phase 1 —
-Design**.
+See root `SPECS.md` for the live checklist. Current phase: **Phase 5 — Polish & Demo Prep**.
 
 ## Architecture
 
-<!-- Diagram goes here once docs/architecture-diagram.md is rendered.
-     Pointer: docs/architecture.md is the source of truth for the flow. -->
+```mermaid
+flowchart TD
+    Client -->|POST /generate + idempotency key| API[FastAPI: app/api]
+    API --> Meter[MeterService.record]
+    Meter -->|duplicate key| Return[Return original result]
+    Meter -->|new key| Store[(usage_event)]
+    Store --> Quota[QuotaService.check]
+    Quota -->|allowed| Cost[CostService.price]
+    Quota -->|exceeded| Err[402 / 429]
+    Cost --> Resp[200 response]
+
+    ClientC[Client] -->|Checkout| Checkout[app/api/checkout.py]
+    Checkout --> Stripe[(Stripe Test Mode)]
+    Stripe -->|webhook| WH[app/api/webhooks/stripe.py]
+    WH --> Verify[Verify signature]
+    Verify -->|bad sig| Err400[400]
+    Verify -->|ok, new event| Sync[subscription_sync.py]
+    Verify -->|ok, dup event id| NoOp[No-op, 2xx]
+    Sync --> DB[(tenant / subscription)]
+
+    ClientR[Client] -->|GET /usage| Rollup[rollup_service.py]
+    Rollup --> DB
+```
 
 For the security model (specifically, the header-supplied identity scope and exclusion of real API key authentication), see the [Security scope section in docs/architecture.md](file:///c:/Users/HP/Documents/Coding%20journeys/FlyRank%20Internship%20Stuff/Capstones/flyrank-capstone-metering-billing/docs/architecture.md#security-scope-documented-decision-not-an-oversight).
 
@@ -25,7 +45,7 @@ Stripe (test mode) — full rationale in `docs/stack.md`.
 
 ## Setup (must work from a clean clone)
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/Nikhil-264/flyrank-capstone-metering-billing.git
 cd flyrank-capstone-metering-billing
 cp .env.example .env        # fill in Stripe TEST keys
 docker compose up --build
@@ -63,5 +83,5 @@ stripe trigger checkout.session.completed
 | `BUILDLOG.md` | Honest AI-usage log |
 | `capstone.yaml` | Submission manifest |
 
-## Non-goal
-See `tasks/phase-1-design/SPECS.md` for the explicit stated non-goal.
+## Non-goals
+Proration calculation on mid-cycle subscription downgrades, automatic PDF invoice generation, email dispatch of invoices, and implementing real authentication/authorization mechanisms (like API keys or JWT verification, scoping identity solely to header values) are non-goals for the core engine.

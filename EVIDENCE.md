@@ -209,4 +209,42 @@ Probe 4 passed: Webhook signature verification and deduplication work perfectly.
 
 ## Phase 5 — Demo Prep
 
-_(pending)_
+### [Phase 5] Run all five docs/evaluation-probes.md probes manually against a freshly-booted instance
+- Proof: The verification script `verify_probes.py` was executed successfully against a clean, freshly-booted docker composition. Output transcript:
+```
+=== STARTING LAYER 2 BEHAVIORAL PROBES ===
+Provisioned Probe Test Tenant: 4097c1dc-88a6-43d2-96e5-cf62abea75de
+
+--- Running Probe 1: Idempotency ---
+First request status: 200
+First response: {'idempotency_key': 'probe-key-a0faf418-2b0b-4fd3-9e0f-0e519332dd25', 'tenant_id': '4097c1dc-88a6-43d2-96e5-cf62abea75de', 'text': 'Simulated generation response.', 'usage': {'api_calls': 1, 'input_tokens': 100, 'cached_input_tokens': 50, 'output_tokens': 20, 'reasoning_tokens': 10, 'cost_microcents': 2000}}
+Second request status: 200
+Second response: {'idempotency_key': 'probe-key-a0faf418-2b0b-4fd3-9e0f-0e519332dd25', 'tenant_id': '4097c1dc-88a6-43d2-96e5-cf62abea75de', 'text': 'Simulated generation response.', 'usage': {'api_calls': 1, 'input_tokens': 100, 'cached_input_tokens': 50, 'output_tokens': 20, 'reasoning_tokens': 10, 'cost_microcents': 2000}}
+Probe 1 passed: Responses are identical, idempotency works.
+
+--- Running Probe 2: Quota Boundary ---
+Boundary request status: 200
+Boundary response: {'idempotency_key': 'probe-key-2e24915e-6187-4ac8-9c3c-4244fbc8b096', 'tenant_id': '4097c1dc-88a6-43d2-96e5-cf62abea75de', 'text': 'Simulated generation response.', 'usage': {'api_calls': 1, 'input_tokens': 99820, 'cached_input_tokens': 0, 'output_tokens': 0, 'reasoning_tokens': 0, 'cost_microcents': 998200}}
+Over limit request status: 429
+Over limit response: {'error': 'Quota Exceeded', 'message': 'Usage quota exceeded. Monthly limit is 100,000 AI tokens, current usage is 100,000 AI tokens, requested 1 tokens.', 'code': 'QUOTA_EXCEEDED'}
+Probe 2 passed: Boundary request succeeded, subsequent request rejected with 429.     
+
+--- Running Probe 5: Pricing Probe ---
+Usage response status: 200
+Usage response: {'tenant_id': '4097c1dc-88a6-43d2-96e5-cf62abea75de', 'plan_id': 'free', 'status': 'active', 'usage': {'api_calls': 2, 'input_tokens': 99920, 'cached_input_tokens': 50, 'output_tokens': 20, 'reasoning_tokens': 10, 'cost_microcents': 1000200}}
+Probe 5 passed: Total cost aggregates and matches expectations exactly.
+
+--- Running Probe 3: Checkout (Upgrade Webhook) ---
+Stripe Webhook status: 200
+Stripe Webhook response: {'status': 'success', 'message': 'event processed'}
+Usage response after webhook: {'tenant_id': '4097c1dc-88a6-43d2-96e5-cf62abea75de', 'plan_id': 'pro', 'status': 'active', 'usage': {'api_calls': 2, 'input_tokens': 99920, 'cached_input_tokens': 50, 'output_tokens': 20, 'reasoning_tokens': 10, 'cost_microcents': 1000200}}
+Probe 3 passed: Webhook processed successfully, tenant plan upgraded to pro.
+
+--- Running Probe 4: Webhook Security ---
+Forged signature webhook status: 400
+Replayed signature webhook status: 200
+Replayed signature webhook response: {'status': 'success', 'message': 'duplicate'}    
+Probe 4 passed: Webhook signature verification and deduplication work perfectly.      
+
+=== ALL 5 LAYER 2 BEHAVIORAL PROBES COMPLETED SUCCESSFULLY ===
+```

@@ -4,7 +4,7 @@
 # ever run.
 
 project: usage-metering-billing-engine
-repo: https://github.com/<your-username>/flyrank-capstone-metering-billing
+repo: https://github.com/Nikhil-264/flyrank-capstone-metering-billing
 stack:
   language: python
   framework: fastapi
@@ -29,4 +29,4 @@ scope:
 
 non_goal: "Proration calculation on mid-cycle subscription downgrades, automatic PDF invoice generation, email dispatch of invoices, and implementing real authentication/authorization mechanisms (like API keys or JWT verification, scoping identity solely to header values) are non-goals for the core engine."
 
-status: in-progress  # in-progress | ships | solid | exceptional
+status: exceptional  # in-progress | ships | solid | exceptional

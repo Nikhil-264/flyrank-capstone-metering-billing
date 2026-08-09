@@ -33,7 +33,7 @@ phase-level spec is fully checked AND evidence is pasted in `EVIDENCE.md`.
 - [x] Tests cover: duplicate usage prevention, quota boundaries (at /
       just-under / over), cost calculations, invalid-webhook rejection,
       duplicate-webhook handling.
-- [ ] README + architecture diagram + setup instructions; submission-pack
+- [x] README + architecture diagram + setup instructions; submission-pack
       files present (`README.md`, `capstone.yaml`, `EVIDENCE.md`,
       `BUILDLOG.md`, `.env.example`).
 

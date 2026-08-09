@@ -45,3 +45,9 @@ coordinator.
 - Symptom: Enabling strict positive quantity validation (`quantity > 0`) in the `/generate` endpoint caused existing quota boundary tests to fail with 400 Bad Request when they omitted `mock_usage`.
 - Root cause: If `mock_usage` is omitted, requested token quantities default to 0. Rejecting zero quantities causes valid simulator requests (intended to test count-based API quotas) to be blocked.
 - Systemic fix applied: Defaulted to `input_tokens = 1` when `mock_usage` is omitted. This ensures that the generated event records a positive quantity (>0) and satisfies the validation rule, while still rejecting explicit zero-quantity mock payloads (e.g. all 0 tokens).
+
+### 2026-08-09 — Mismatched/missing explicit evidence items in EVIDENCE.md
+- Symptom: Mismatch identified between checked items in Phase-level SPECS.md checklists and explicit evidence entries in `EVIDENCE.md`.
+- Root cause: Phase 2, 3, and 4 checked off checklist items while combining their proof into broader/aggregate evidence entries (e.g., grouping all Phase 2 tests under one output block) instead of documenting each individual checkbox.
+- Systemic fix applied: Documented this audit finding as a process violation. For Phase 5, all checklist items will be individually verified with a clean clone re-run transcript.
+
