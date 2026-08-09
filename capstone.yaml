@@ -5,6 +5,13 @@
 
 project: usage-metering-billing-engine
 repo: https://github.com/Nikhil-264/flyrank-capstone-metering-billing
+seed: "automatic (runs on container startup via docker-compose.yml)"
+base_url: "http://localhost:8000"
+endpoints:
+  - "POST /generate"
+  - "GET /usage"
+  - "POST /checkout"
+  - "POST /webhooks/stripe"
 stack:
   language: python
   framework: fastapi

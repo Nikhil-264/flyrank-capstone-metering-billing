@@ -9,7 +9,7 @@ environment this was built inside.
 > complete. Do not backfill it at the end — keep it honest as you go.
 
 ## Status
-See root `SPECS.md` for the live checklist. Current phase: **Phase 5 — Polish & Demo Prep**.
+Status: **Complete** — All Definition of Done items met. See root [SPECS.md](file:///c:/Users/HP/Documents/Coding%20journeys/FlyRank%20Internship%20Stuff/Capstones/flyrank-capstone-metering-billing/SPECS.md) for details.
 
 ## Architecture
 
@@ -85,3 +85,8 @@ stripe trigger checkout.session.completed
 
 ## Non-goals
 Proration calculation on mid-cycle subscription downgrades, automatic PDF invoice generation, email dispatch of invoices, and implementing real authentication/authorization mechanisms (like API keys or JWT verification, scoping identity solely to header values) are non-goals for the core engine.
+
+## Limitations
+- **Authentication & Tenant Identity Scope:** Tenant identity is identified solely by the header value `X-Tenant-ID`. There is no actual session authentication, API key validation, or token-based authorization (see the [Security scope section in docs/architecture.md](file:///c:/Users/HP/Documents/Coding%20journeys/FlyRank%20Internship%20Stuff/Capstones/flyrank-capstone-metering-billing/docs/architecture.md#security-scope-documented-decision-not-an-oversight)).
+- **Database Scaling (HA):** Postgres is configured as a single-instance container with local file volume persistence, lacking high-availability (HA), read-replicas, or automatic failover clusters suitable for high-throughput production workloads.
+- **Stripe Reconciliation Scheduling:** The reconciliation job `reconcile_stripe.py` is currently designed to run as an on-demand administrative script rather than being actively scheduled/cron'd as a daemon task or triggered automatically by a messaging queue.
