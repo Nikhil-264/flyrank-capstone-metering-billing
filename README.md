@@ -17,6 +17,8 @@ Design**.
 <!-- Diagram goes here once docs/architecture-diagram.md is rendered.
      Pointer: docs/architecture.md is the source of truth for the flow. -->
 
+For the security model (specifically, the header-supplied identity scope and exclusion of real API key authentication), see the [Security scope section in docs/architecture.md](file:///c:/Users/HP/Documents/Coding%20journeys/FlyRank%20Internship%20Stuff/Capstones/flyrank-capstone-metering-billing/docs/architecture.md#security-scope-documented-decision-not-an-oversight).
+
 ## Stack
 Python 3.12 · FastAPI · PostgreSQL · SQLAlchemy + Alembic · pytest ·
 Stripe (test mode) — full rationale in `docs/stack.md`.
