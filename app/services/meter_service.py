@@ -4,13 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.usage_event import UsageEvent
-from app.config.pricing import (
-    INPUT_TOKEN_RATE,
-    CACHED_INPUT_TOKEN_RATE,
-    OUTPUT_TOKEN_RATE,
-    REASONING_TOKEN_RATE,
-    API_CALL_RATE
-)
+from app.services.cost_service import CostService
 
 class MeterService:
     @staticmethod
@@ -38,22 +32,19 @@ class MeterService:
         if existing:
             return existing
 
-        # 2. Calculate cost in micro-cents
-        cost_microcents = 0
-        if type == "api_call":
-            cost_microcents = quantity * API_CALL_RATE
-        elif type == "ai_token":
-            t_input = token_input or 0
-            t_cached = token_cached_input or 0
-            t_output = token_output or 0
-            t_reasoning = token_reasoning or 0
-            
-            cost_microcents = (
-                (t_input * INPUT_TOKEN_RATE) +
-                (t_cached * CACHED_INPUT_TOKEN_RATE) +
-                (t_output * OUTPUT_TOKEN_RATE) +
-                (t_reasoning * REASONING_TOKEN_RATE)
-            )
+        # 2. Validate quantity > 0
+        if quantity <= 0:
+            raise ValueError("Usage quantity must be greater than zero.")
+
+        # 3. Calculate cost in micro-cents using CostService
+        cost_microcents = CostService.price(
+            type=type,
+            quantity=quantity,
+            token_input=token_input,
+            token_cached_input=token_cached_input,
+            token_output=token_output,
+            token_reasoning=token_reasoning
+        )
 
         # 3. Create and add UsageEvent row
         event = UsageEvent(

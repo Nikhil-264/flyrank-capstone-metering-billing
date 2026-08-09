@@ -17,10 +17,10 @@ phase-level spec is fully checked AND evidence is pasted in `EVIDENCE.md`.
       message.
 
 ## Cost calculation
-- [ ] ⚓ Monthly usage rolls up into a cost figure per tenant. → `tasks/phase-4-cost-hardening/SPECS.md`
-- [ ] AI token pricing handles cached input, reasoning tokens, and output
+- [x] ⚓ Monthly usage rolls up into a cost figure per tenant. → `tasks/phase-4-cost-hardening/SPECS.md`
+- [x] AI token pricing handles cached input, reasoning tokens, and output
       pricing correctly (see `knowledge/pricing-plan.md`).
-- [ ] Pricing constants are pinned in config and covered by tests.
+- [x] Pricing constants are pinned in config and covered by tests.
 
 ## Stripe integration
 - [x] ⚓ Subscription checkout works end-to-end in Stripe test mode. → `tasks/phase-3-stripe-integration/SPECS.md`
@@ -28,9 +28,9 @@ phase-level spec is fully checked AND evidence is pasted in `EVIDENCE.md`.
       tenant plan/status.
 
 ## Data model, tests & documentation
-- [ ] Database includes tenants, plans, subscriptions, usage_events;
+- [x] Database includes tenants, plans, subscriptions, usage_events;
       tenant data isolated.
-- [ ] Tests cover: duplicate usage prevention, quota boundaries (at /
+- [x] Tests cover: duplicate usage prevention, quota boundaries (at /
       just-under / over), cost calculations, invalid-webhook rejection,
       duplicate-webhook handling.
 - [ ] README + architecture diagram + setup instructions; submission-pack

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.models.tenant import Tenant
 from app.models.usage_event import UsageEvent
 from app.services.meter_service import MeterService
 from app.services.quota_service import QuotaService
@@ -49,7 +50,18 @@ async def generate(
     Checks subscription status and quota limits before recording usage.
     Deduplicates requests using Idempotency-Key.
     """
-    # 1. Idempotency Check: check if key has already been processed and committed
+    # 1. Validate Idempotency-Key header (non-empty/non-whitespace)
+    if not idempotency_key or idempotency_key.strip() == "":
+        raise HTTPException(status_code=400, detail="Idempotency-Key header cannot be empty or whitespace.")
+
+    # 2. Verify tenant exists in the database
+    tenant_stmt = select(Tenant).filter_by(id=x_tenant_id)
+    tenant_res = await db.execute(tenant_stmt)
+    tenant = tenant_res.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # 3. Idempotency Check: check if key has already been processed and committed
     stmt = select(UsageEvent).filter_by(tenant_id=x_tenant_id, idempotency_key=idempotency_key)
     res = await db.execute(stmt)
     existing_event = res.scalar_one_or_none()
@@ -70,19 +82,23 @@ async def generate(
             )
         )
 
-    # 2. Parse token counts
-    t_input = 0
-    t_cached = 0
-    t_output = 0
-    t_reasoning = 0
-    requested_tokens = 0
-    
+    # 4. Parse token counts and validate they are positive
     if request.mock_usage:
         t_input = request.mock_usage.input_tokens
         t_cached = request.mock_usage.cached_input_tokens
         t_output = request.mock_usage.output_tokens
         t_reasoning = request.mock_usage.reasoning_tokens
         requested_tokens = t_input + t_cached + t_output + t_reasoning
+        
+        if requested_tokens <= 0:
+            raise HTTPException(status_code=400, detail="Requested token quantity must be greater than zero.")
+    else:
+        # Default to 1 token if mock_usage is not provided to ensure a non-zero usage quantity
+        t_input = 1
+        t_cached = 0
+        t_output = 0
+        t_reasoning = 0
+        requested_tokens = 1
 
     # 3. Quota check
     # Will raise 402 or 429 if the subscription is inactive or quota is exceeded

@@ -111,7 +111,61 @@ After payment completion and webhook delivery:
 
 ## Phase 4 — Cost & Hardening
 
-_(pending)_
+### [Phase 4] Pinned pricing constants & CostService pricing tests
+- Proof: The automated tests in `tests/test_cost.py` validate the pricing model, ensuring that cached-input, reasoning-token, and standard rates produce the exact expected micro-cent values.
+```
+pytest tests/test_cost.py
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.14.2, asyncio-1.4.0
+collected 4 items
+
+tests/test_cost.py ....                                                 [100%]
+
+============================== 4 passed in 0.08s ===============================
+```
+
+### [Phase 4] Tenant isolation and robust error handling
+- Proof: The automated tests in `tests/test_tenant_isolation.py` verify that Tenant A cannot read or affect Tenant B's usage rollup, that missing or malformed headers return 4xx (422/400), and that zero/negative usage values are rejected properly.
+```
+pytest tests/test_tenant_isolation.py
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.14.2, asyncio-1.4.0
+collected 5 items
+
+tests/test_tenant_isolation.py .....                                    [100%]
+
+============================== 5 passed in 0.32s ===============================
+```
+
+### [Phase 4] Full test suite execution
+- Proof: The entire test suite ran successfully and passed cleanly.
+```
+PS C:\Users\HP\Documents\Coding journeys\FlyRank Internship Stuff\Capstones\flyrank-capstone-metering-billing> docker compose run --rm api pytest
+[+] Creating 1/1
+ ✔ Container billing-db  Running                                                 0.0s 
+================================ test session starts =================================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.14.2, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 25 items
+
+tests/test_cost.py ....                                                        [ 16%] 
+tests/test_metering.py ......                                                  [ 40%]
+tests/test_quota.py ....                                                       [ 56%]
+tests/test_stripe_webhook.py ......                                            [ 80%]
+tests/test_tenant_isolation.py .....                                           [100%]
+
+================================= 25 passed in 3.55s ===============================
+```
 
 ## Phase 5 — Demo Prep
 

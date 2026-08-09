@@ -69,3 +69,9 @@ one-shot.
 - Accepted as-is / modified / rejected because: Rejected because Stripe API version `2025-03-31.basil` and newer (e.g. Dahlia) moved billing period fields down to individual items (`sub.items.data[0]`).
 - If rejected or buggy: root cause + link to learnings.md entry, if any: Root cause detailed in learnings.md. Created `_get_period_dates()` helper function.
 
+### 2026-08-09 CostService and pricing hardening implementation
+- Prompted for: Implementing `CostService.price()`, updating `MeterService.record()` to use it, adding tenant existence verification in `/generate`, and validating positive quantity constraints.
+- AI produced: Created `CostService`, updated `MeterService`, added global `ValueError` handler in `errors.py`, added tenant and header validation to `/generate`.
+- Accepted as-is / modified / rejected because: Accepted with minor adjustments. The initial implementation rejected `requested_tokens == 0` for all calls, causing existing quota boundary tests (which omitted `mock_usage` and defaulted to 0 tokens) to fail with 400 Bad Request.
+- If rejected or buggy: root cause + link to learnings.md entry, if any: Omitted `mock_usage` defaulting to 0 tokens was rejected. Modified code to default to 1 token when `mock_usage` is omitted, resolving the test failures (detailed in learnings.md).
+

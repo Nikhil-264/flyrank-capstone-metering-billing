@@ -29,6 +29,17 @@ async def payment_required_handler(request: Request, exc: PaymentRequiredExcepti
         }
     )
 
+async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": "Bad Request",
+            "message": str(exc),
+            "code": "BAD_REQUEST"
+        }
+    )
+
 def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(QuotaExceededException, quota_exceeded_handler)
     app.add_exception_handler(PaymentRequiredException, payment_required_handler)
+    app.add_exception_handler(ValueError, value_error_handler)

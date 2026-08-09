@@ -40,3 +40,8 @@ coordinator.
 - Symptom: Real Stripe webhook delivery triggers failed on subscription sync with `AttributeError: current_period_start`.
 - Root cause: In Stripe API version `2025-03-31.basil` and newer (including Dahlia `2026-07-29.dahlia` used by the test account), `current_period_start` and `current_period_end` are no longer top-level attributes of the Subscription object. Instead, they have been moved down to individual subscription items to support mixed-interval subscriptions.
 - Systemic fix applied: Created `_get_period_dates()` helper function in `stripe.py` webhook to extract timestamps from the first item under `items.data[0]` if they are missing at the subscription top-level, and added unit tests covering both legacy and new structures.
+
+### 2026-08-09 — Optional API parameters defaulting under strict positive validation
+- Symptom: Enabling strict positive quantity validation (`quantity > 0`) in the `/generate` endpoint caused existing quota boundary tests to fail with 400 Bad Request when they omitted `mock_usage`.
+- Root cause: If `mock_usage` is omitted, requested token quantities default to 0. Rejecting zero quantities causes valid simulator requests (intended to test count-based API quotas) to be blocked.
+- Systemic fix applied: Defaulted to `input_tokens = 1` when `mock_usage` is omitted. This ensures that the generated event records a positive quantity (>0) and satisfies the validation rule, while still rejecting explicit zero-quantity mock payloads (e.g. all 0 tokens).
