@@ -94,6 +94,18 @@ before "fixing" it in case it's an intentional trade-off already logged.
 > [!NOTE]
 > **Tenant Provisioning Requirement:** An active subscription row (defaulting to the `free` plan) must be provisioned in the database alongside any newly created Tenant. This database relationship ensures that subsequent calls to `POST /generate` do not fail with a 402/404 subscription status check.
 
+## Security scope (documented decision, not an oversight)
+Tenant identity is entirely the `X-Tenant-ID` header value — there is
+no auth token, API key, or session tying a caller to a tenant. Any
+caller who knows (or guesses) a tenant's UUID can read that tenant's
+`/usage` or act as them against `/generate` and `/checkout`.
+`tests/test_tenant_isolation.py` proves data does not leak *between*
+tenants when each is addressed by its own correct ID — it does not
+prove a caller is who they claim to be. Real per-tenant authentication
+(API keys or JWT-based auth) is out of core scope for this capstone
+(see `tech-debt-tracker.md`'s scope-freeze entry) and would be the
+first thing added if this went further than a capstone demo.
+
 ## Diagram
 A rendered version of the flow above (for the README) lives at
 `docs/architecture-diagram.md` — keep both in sync when the flow
