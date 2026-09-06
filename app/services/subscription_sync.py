@@ -14,8 +14,8 @@ class SubscriptionSync:
         stripe_cus_id: str,
         plan_id: str,
         status: str,
-        current_period_start: datetime,
-        current_period_end: datetime
+        current_period_start: Optional[datetime] = None,
+        current_period_end: Optional[datetime] = None
     ) -> Subscription:
         """
         Sync a subscription received from a Stripe webhook with the local database.

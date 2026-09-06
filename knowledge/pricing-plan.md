@@ -28,10 +28,19 @@ never the other way around.
   copy literal dollar figures — this project's rates are simulated and
   pinned in `app/config/pricing.py` + tested in the matching test file.
 
+## Money unit
+Cost is an **integer count of "micro-cents"**: 1 micro-cent = 1e-4 cents
+= 1e-6 USD; 10,000 micro-cents = 1 cent; 1,000,000 = 1 USD. The name is
+kept for API-contract stability; the precise definition and all rates
+live in `app/config/pricing.py`. Never `float`/`Decimal`.
+
 ## API-call pricing
-Flat monthly cost model tied to plan tier — API calls are metered by
-count, not tokens. Exact per-call rate (if any beyond quota
-enforcement) is pinned in `app/config/pricing.py`.
+Flat monthly model tied to plan tier — API calls are metered by **count**
+for quota enforcement, with a `$0` per-call metered rate
+(`API_CALL_RATE = 0`). The recurring **plan fee** (Pro = $49/mo) lives at
+Stripe and is intentionally **not** folded into the `GET /usage`
+`cost_microcents` figure, which reports metered *usage* cost only. See
+README "Limitations".
 
 ## Worked example (fill in once rates are pinned)
 ```

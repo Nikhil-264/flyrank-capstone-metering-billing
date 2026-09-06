@@ -1,4 +1,12 @@
 # verify_probes.py
+#
+# Layer-2 behavioural probes against a RUNNING instance. Run it from inside the
+# compose network so it can reach both Postgres and the API:
+#
+#   docker compose exec api python verify_probes.py
+#
+# Override the API base URL with PROBE_BASE_URL when running from elsewhere.
+import os
 import sys
 import uuid
 import httpx
@@ -13,7 +21,7 @@ from app.config.settings import settings
 from app.models.tenant import Tenant
 from app.models.subscription import Subscription
 
-API_URL = "http://api:8000"
+API_URL = os.environ.get("PROBE_BASE_URL", "http://api:8000")
 
 def sign_payload(payload_bytes: bytes, secret: str) -> str:
     timestamp = str(int(time.time()))

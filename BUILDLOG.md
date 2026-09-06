@@ -80,4 +80,33 @@ one-shot.
 - AI produced: Updated `docker-compose.yml` container command, created `reconcile_stripe.py` script and `tests/test_reconciliation.py`, updated `README.md` and `capstone.yaml`, logged the EVIDENCE.md audit process violation in `learnings.md`.
 - Accepted as-is / modified / rejected because: Accepted as-is. All unit tests ran and passed cleanly.
 
+### 2026-09-06 Rubric-hardening pass (post-review)
+- Prompted for: acting on an external code review — close the quota
+  concurrency gap, turn the reconciliation script into a real scheduled
+  background job with retries + failure alert (shared-req #3), add the
+  missing `usage_events` lookup index (shared-req #4), unify quota/rollup
+  counting, add `Retry-After`, narrow the blanket `ValueError` handler,
+  handle concurrent duplicate webhook inserts, stop fabricating Stripe
+  period dates, cache the Pro price id, stop leaking Stripe error text,
+  pin `stripe<13`, and fix the `capstone.yaml` test command + status.
+- AI produced: `app/services/usage_query.py`, `app/services/stripe_helpers.py`,
+  `app/services/reconciliation_service.py`, `app/jobs/{runner,scheduler}.py`,
+  `app/api/admin_jobs.py`, `app/models/job_run.py`, migration `0002`,
+  rewrites of `quota_service`, `rollup_service`, `errors`, `webhooks/stripe`,
+  `checkout`, `main` (lifespan), plus `tests/test_jobs.py` and a
+  `test_quota_boundary_is_race_safe` race test.
+- Accepted as-is / modified / rejected because: accepted after two fixes —
+  (1) the race test first failed non-deterministically because it pinned
+  `current_period_start` to `datetime.now()` and container clock skew
+  between the app and Postgres pushed the filler rows just outside the
+  `created_at >= period_start` window; fixed by using a clearly-past
+  period start. (2) `admin_jobs` initially imported the job-name constant
+  from `app/jobs/scheduler`, which pulled APScheduler into the request
+  import path; moved the constant to `reconciliation_service`.
+- Verification: `docker compose run --rm api pytest` → 31 passed;
+  `alembic upgrade head` clean 0001→0002; all 5 `verify_probes.py` probes
+  pass against a fresh boot; `POST /admin/jobs/reconcile` hit real Stripe
+  test mode, recorded a `job_runs` row, and correctly downgraded a stale
+  local subscription.
+
 

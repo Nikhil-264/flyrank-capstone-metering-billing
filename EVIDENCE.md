@@ -248,3 +248,58 @@ Probe 4 passed: Webhook signature verification and deduplication work perfectly.
 
 === ALL 5 LAYER 2 BEHAVIORAL PROBES COMPLETED SUCCESSFULLY ===
 ```
+
+## Post-review hardening (2026-09-06)
+
+### [Shared-req #3] Background job: scheduled, with retries + failure alert
+- Proof: `app/jobs/scheduler.py` registers a nightly (03:00 UTC) Stripe
+  reconciliation job routed through `app/jobs/runner.py::run_job`
+  (<=3 retries + a durable `job_runs` row + a CRITICAL "JOB FAILURE ALERT").
+```
+tests/test_jobs.py::test_run_job_records_success PASSED                  [ 50%]
+tests/test_jobs.py::test_run_job_retries_then_alerts PASSED             [ 75%]
+tests/test_jobs.py::test_admin_reconcile_endpoint_records_job_run PASSED [100%]
+============================== 4 passed in 2.27s ===============================
+```
+- Live (fresh `docker compose up`, triggered on demand vs real Stripe test mode):
+```
+INFO:app.jobs.scheduler:APScheduler started: stripe_reconciliation scheduled nightly at 03:00 UTC
+INFO:app.reconciliation:reconcile: {'fetched': 3, 'synced': 0, 'already_in_sync': 0, 'downgraded': 1, 'skipped': 3}
+{"id":"4fe75fa5-8a89-4ecb-ba61-21a05935b730","job_name":"stripe_reconciliation","status":"success","attempts":1,"started_at":"2026-09-06T17:14:05.776318+00:00","finished_at":"2026-09-06T17:14:06.829226+00:00","error":null}
+```
+
+### [Correctness/Resilience] Quota boundary is race-safe
+- Proof: `check_quota` locks the `subscriptions` row `FOR UPDATE`; two
+  concurrent callers at 999/1000 -> exactly one 200, one 429, final == 1000.
+```
+tests/test_quota.py::test_quota_boundary_is_race_safe PASSED
+```
+
+### [Shared-req #4] usage_events lookup index + clean migration chain
+```
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001, initial tables
+INFO  [alembic.runtime.migration] Running upgrade 0001 -> 0002, usage_events lookup index + job_runs table
+app import OK
+apscheduler OK
+```
+
+### [Resilience] 429 carries Retry-After
+- Proof: `test_generate_endpoint_token_quota_boundary` now asserts the
+  `Retry-After` header is present and > 0 on the 429 response.
+
+### Full suite green after all changes — `docker compose run --rm api pytest`
+```
+tests/test_cost.py ....                                                  [ 12%]
+tests/test_jobs.py ...                                                   [ 22%]
+tests/test_metering.py ......                                            [ 41%]
+tests/test_quota.py .....                                                [ 58%]
+tests/test_reconciliation.py ..                                          [ 64%]
+tests/test_stripe_webhook.py ......                                      [ 83%]
+tests/test_tenant_isolation.py .....                                     [100%]
+============================== 31 passed in 6.47s ==============================
+```
+
+### All 5 Layer-2 probes still pass on a freshly-booted instance
+`docker compose exec api python verify_probes.py` ->
+`=== ALL 5 LAYER 2 BEHAVIORAL PROBES COMPLETED SUCCESSFULLY ===`
+(re-verified 2026-09-06 after every change above).

@@ -5,14 +5,23 @@ highest-scrutiny code path in the repo.
 
 ## Contract
 - Every billable request carries a client-supplied idempotency key.
-- `MeterService.record(tenant, type, qty, idempotency_key)`:
-  - If the key has been seen for this tenant → return the **original**
-    result. Do not create a new `usage_event` row. Do not recompute.
-  - If the key is new → store the `usage_event`, then run the quota
-    check.
+- Order of operations in `POST /generate` (`app/api/generate.py`):
+  1. If the `(tenant, key)` pair has been seen → return the **original**
+     result. No new `usage_event`, no recompute.
+  2. If the key is new → run the **quota check first**
+     (`QuotaService.check_quota`), then `MeterService.record()` persists
+     the event. Fail fast: a request that will be rejected must never
+     write a row. (This is a deliberate refinement of the capstone's
+     store-then-check sketch — see `tech-debt-tracker.md`.)
+- `MeterService.record(tenant, type, qty, idempotency_key)` itself is
+  still idempotent (pre-check + constraint) so it is safe to call from
+  any path.
 - The idempotency key + tenant pair must be unique at the database
-  level (a unique constraint), not just checked in application code —
-  a race between two concurrent retries must still land on one row.
+  level (`uq_tenant_idempotency_key`), not just checked in application
+  code — a race between two concurrent retries must still land on one
+  row. The same discipline applies to Stripe webhook events, keyed by
+  Stripe event id (`webhook_events` PK); a concurrent duplicate delivery
+  that loses the insert race is treated as a duplicate, not a 500.
 
 ## Required tests (do not consider this rule "implemented" without
 these passing)

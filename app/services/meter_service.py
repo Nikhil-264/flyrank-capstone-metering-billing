@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.usage_event import UsageEvent
 from app.services.cost_service import CostService
+from app.api.errors import InvalidUsageError
 
 class MeterService:
     @staticmethod
@@ -34,7 +35,7 @@ class MeterService:
 
         # 2. Validate quantity > 0
         if quantity <= 0:
-            raise ValueError("Usage quantity must be greater than zero.")
+            raise InvalidUsageError("Usage quantity must be greater than zero.")
 
         # 3. Calculate cost in micro-cents using CostService
         cost_microcents = CostService.price(

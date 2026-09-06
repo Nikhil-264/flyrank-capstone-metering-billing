@@ -1,20 +1,41 @@
-import stripe
+import asyncio
+import logging
 import uuid
 from typing import Optional
+
+import stripe
+
 from app.config.settings import settings
 
 # Initialize the Stripe client globally
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
+logger = logging.getLogger("app.services.stripe")
+
+# Process-level cache for the discovered Pro price id (per capstone: one plan,
+# one price — no reason to re-list Products/Prices on every checkout).
+_pro_price_id_cache: Optional[str] = None
+
+
 class StripeService:
     @staticmethod
     async def get_or_create_pro_price() -> str:
         """
-        Get or create the 'Pro Plan' product and price in Stripe.
-        Returns the price ID.
+        Resolve the Stripe Price id for the Pro plan.
+
+        Order of preference:
+          1. ``settings.STRIPE_PRO_PRICE_ID`` if configured (no API call);
+          2. a value cached earlier in this process;
+          3. discover-or-create it in Stripe, then cache it.
         """
-        import asyncio
-        return await asyncio.to_thread(StripeService._sync_get_or_create_pro_price)
+        global _pro_price_id_cache
+        if settings.STRIPE_PRO_PRICE_ID:
+            return settings.STRIPE_PRO_PRICE_ID
+        if _pro_price_id_cache:
+            return _pro_price_id_cache
+        price_id = await asyncio.to_thread(StripeService._sync_get_or_create_pro_price)
+        _pro_price_id_cache = price_id
+        return price_id
 
     @staticmethod
     def _sync_get_or_create_pro_price() -> str:

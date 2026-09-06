@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Integer, BigInteger, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import String, Integer, BigInteger, DateTime, ForeignKey, UniqueConstraint, Index, func
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 
@@ -29,4 +29,7 @@ class UsageEvent(Base):
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "idempotency_key", name="uq_tenant_idempotency_key"),
+        # Every quota check and usage rollup filters on exactly these three
+        # columns — see app/services/usage_query.py.
+        Index("ix_usage_events_tenant_type_created", "tenant_id", "type", "created_at"),
     )

@@ -46,6 +46,39 @@ coordinator.
 - Root cause: If `mock_usage` is omitted, requested token quantities default to 0. Rejecting zero quantities causes valid simulator requests (intended to test count-based API quotas) to be blocked.
 - Systemic fix applied: Defaulted to `input_tokens = 1` when `mock_usage` is omitted. This ensures that the generated event records a positive quantity (>0) and satisfies the validation rule, while still rejecting explicit zero-quantity mock payloads (e.g. all 0 tokens).
 
+### 2026-09-06 — Quota boundary was not race-safe; enforced with a row lock
+- Symptom: two concurrent `/generate` calls for one tenant at 999/1000
+  could both pass the boundary check and both write, landing usage at
+  1001. Idempotency had a DB-constraint backstop; quota had none.
+- Root cause: `check_quota` read current usage and returned; nothing
+  serialized a second caller that read the same pre-write total.
+- Systemic fix applied: `QuotaService.check_quota` now `SELECT ... FOR
+  UPDATE`s the tenant's `subscriptions` row, held for the request
+  transaction, so callers for one tenant serialize at the boundary.
+  Documented in `rules/quota-and-status-codes.md`; regression test
+  `tests/test_quota.py::test_quota_boundary_is_race_safe`.
+
+### 2026-09-06 — Time-window test fixtures must not assume app/DB clock parity
+- Symptom: the new quota race test failed intermittently — both callers
+  "succeeded" — only inside docker-compose.
+- Root cause: the fixture set `current_period_start = datetime.now()`
+  (app container clock) while filler `usage_event.created_at` came from
+  Postgres `now()` (db container clock). Skew put the filler rows just
+  before `period_start`, so the `created_at >= period_start` filter
+  dropped them and every caller saw 0 usage.
+- Systemic fix applied: period-window fixtures now use a clearly-past
+  start (`now() - 1 day`). General rule: never gate test data on
+  `datetime.now()` when the row timestamps are DB-generated.
+
+### 2026-09-06 — Background job needs its own retry/alert wrapper, not ad-hoc
+- Symptom: the reconciliation "job" was a plain script — no schedule, no
+  retries, no failure signal (shared-requirement #3 unmet).
+- Systemic fix applied: `app/jobs/runner.py::run_job` — a generic wrapper
+  giving any job body ≤N retries with back-off, one durable `job_runs`
+  row (`running`→`success`/`failed`), and a `CRITICAL` "JOB FAILURE
+  ALERT" log once exhausted. The scheduler and the on-demand admin
+  trigger both route through it. Future jobs reuse it as-is.
+
 ### 2026-08-09 — Mismatched/missing explicit evidence items in EVIDENCE.md
 - Symptom: Mismatch identified between checked items in Phase-level SPECS.md checklists and explicit evidence entries in `EVIDENCE.md`.
 - Root cause: Phase 2, 3, and 4 checked off checklist items while combining their proof into broader/aggregate evidence entries (e.g., grouping all Phase 2 tests under one output block) instead of documenting each individual checkbox.

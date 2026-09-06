@@ -1,12 +1,16 @@
+import asyncio
 import pytest
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from httpx import AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.models.tenant import Tenant
 from app.models.subscription import Subscription
 from app.models.usage_event import UsageEvent
+from app.services.quota_service import QuotaService
+from app.services.meter_service import MeterService
+from app.api.errors import QuotaExceededException
 
 async def create_tenant_with_subscription(
     db: AsyncSession,
@@ -149,6 +153,9 @@ async def test_generate_endpoint_token_quota_boundary(db: AsyncSession, client: 
     assert data["error"] == "Quota Exceeded"
     assert data["code"] == "QUOTA_EXCEEDED"
     assert "Usage quota exceeded. Monthly limit is 100,000 AI tokens, current usage is 100,000 AI tokens, requested 1 tokens." in data["message"]
+    # 429 responses carry a Retry-After hint (seconds until the window resets).
+    assert "retry-after" in {k.lower() for k in response.headers}
+    assert int(response.headers["retry-after"]) > 0
 
 @pytest.mark.asyncio
 async def test_generate_endpoint_api_call_quota_boundary(db: AsyncSession, client: AsyncClient):
@@ -199,3 +206,60 @@ async def test_generate_endpoint_api_call_quota_boundary(db: AsyncSession, clien
     assert data["error"] == "Quota Exceeded"
     assert data["code"] == "QUOTA_EXCEEDED"
     assert "Usage quota exceeded. Monthly limit is 1,000 API calls, current usage is 1,000 API calls, requested 1 API call." in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_quota_boundary_is_race_safe(test_engine):
+    """
+    Two concurrent requests for the same tenant at 999/1000 API calls must not
+    BOTH pass the boundary check. QuotaService locks the subscription row
+    FOR UPDATE, so the second caller sees the first caller's committed event
+    and is rejected with 429 — final usage lands on exactly 1000, never 1001.
+    """
+    Session = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
+    # Period start is safely in the past so the filler rows below are counted
+    # regardless of any container clock skew between the app and Postgres.
+    period_start = datetime.now(timezone.utc) - timedelta(days=1)
+
+    async with Session() as s:
+        tenant = Tenant(name="Race Tenant")
+        s.add(tenant)
+        await s.commit()
+        await s.refresh(tenant)
+        tenant_id = tenant.id
+        s.add(Subscription(
+            tenant_id=tenant_id, plan_id="free", status="active",
+            current_period_start=period_start,
+            current_period_end=datetime.now(timezone.utc) + timedelta(days=29),
+        ))
+        for i in range(999):
+            s.add(UsageEvent(
+                tenant_id=tenant_id, type="api_call", quantity=1,
+                idempotency_key=f"race-fill-{i}", cost_microcents=0,
+            ))
+        await s.commit()
+
+    async def attempt(key: str):
+        async with Session() as session:
+            await QuotaService.check_quota(session, tenant_id, 1)
+            await MeterService.record(
+                db=session, tenant_id=tenant_id, type="ai_token",
+                quantity=1, idempotency_key=key, token_input=1,
+            )
+            await session.commit()
+
+    results = await asyncio.gather(
+        attempt("race-a"), attempt("race-b"), return_exceptions=True
+    )
+
+    rejected = [r for r in results if isinstance(r, QuotaExceededException)]
+    succeeded = [r for r in results if r is None]
+    assert len(succeeded) == 1
+    assert len(rejected) == 1
+
+    async with Session() as s:
+        total = await s.scalar(
+            select(func.count(UsageEvent.id)).where(UsageEvent.tenant_id == tenant_id)
+        )
+    assert total == 1000  # 999 filler + exactly one winner, never 1001

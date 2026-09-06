@@ -4,7 +4,12 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from app.config.settings import settings
+
+# Never start APScheduler during tests.
+settings.ENABLE_SCHEDULER = False
+
 from app.models.base import Base
+import app.models  # noqa: F401  -- register every table on Base.metadata
 from app.db.seed import seed_plans
 
 @pytest.fixture

@@ -2,13 +2,14 @@
 
 Truth lives in the migrations, not here. This is the index.
 
-| Entity | Model file (planned) | Migration (planned) | Notes |
+| Entity | Model file | Migration | Notes |
 |---|---|---|---|
-| tenant | `app/models/tenant.py` | `alembic/versions/0001_*.py` | Root of isolation — every other table FKs to it |
-| plan | `app/models/plan.py` | same | Free / Pro, seeded not user-created |
-| subscription | `app/models/subscription.py` | same | Mirrors Stripe subscription state |
-| usage_event | `app/models/usage_event.py` | same | Unique constraint on (tenant_id, idempotency_key) — see `rules/idempotency.md` |
-| webhook_event | `app/models/webhook_event.py` | same | Stripe event_id unique constraint for dedup |
+| tenant | `app/models/tenant.py` | `alembic/versions/0001_initial_tables.py` | Root of isolation — every other table FKs to it |
+| plan | `app/models/plan.py` | `0001` | Free / Pro, seeded not user-created |
+| subscription | `app/models/subscription.py` | `0001` | Mirrors Stripe subscription state; `current_period_*` nullable (NULL → calendar-month fallback) |
+| usage_event | `app/models/usage_event.py` | `0001` + `0002` | Unique `(tenant_id, idempotency_key)` (see `rules/idempotency.md`); lookup index `(tenant_id, type, created_at)` in `0002` |
+| webhook_event | `app/models/webhook_event.py` | `0001` | Stripe `event_id` is the PK — dedup by primary key |
+| job_run | `app/models/job_run.py` | `0002` | One row per background-job execution: `running`/`success`/`failed`, attempts, error text |
 
 ## Detailed Schema Draft
 
@@ -47,15 +48,32 @@ Truth lives in the migrations, not here. This is the index.
 - `token_cached_input`: `INTEGER` (Nullable)
 - `token_output`: `INTEGER` (Nullable)
 - `token_reasoning`: `INTEGER` (Nullable)
-- `cost_microcents`: `BIGINT` (Not Null)
+- `cost_microcents`: `BIGINT` (Not Null) — integer micro-cents (1e-6 USD); never float
 - `created_at`: `TIMESTAMP WITH TIME ZONE` (Not Null, default `now()`)
-- **Constraints**: Unique index on `(tenant_id, idempotency_key)`
+- **Constraints**: Unique `(tenant_id, idempotency_key)` (`uq_tenant_idempotency_key`)
+- **Indexes**: `(tenant_id, type, created_at)` (`ix_usage_events_tenant_type_created`) —
+  every quota check and rollup filters on exactly these columns
+  (`app/services/usage_query.py`)
+
+**Billable-call accounting:** `POST /generate` writes one `ai_token` row per
+call; it counts as 1 API call *and* N tokens. `api_call`-typed rows are for
+bulk/administrative metering and add their `quantity` to the API-call total.
 
 ### webhook_events
-- `id`: `VARCHAR(255)` (Primary Key, Stripe Event ID `evt_...`)
+- `id`: `VARCHAR(255)` (Primary Key, Stripe Event ID `evt_...`) — dedup is by PK
 - `type`: `VARCHAR(255)` (Not Null)
 - `processed_at`: `TIMESTAMP WITH TIME ZONE` (Not Null, default `now()`)
 - `payload`: `JSONB` (Not Null)
+
+### job_runs
+- `id`: `UUID` (Primary Key)
+- `job_name`: `VARCHAR(100)` (Not Null, e.g. `'stripe_reconciliation'`)
+- `status`: `VARCHAR(20)` (Not Null, `'running'` | `'success'` | `'failed'`)
+- `attempts`: `INTEGER` (Not Null, default `0`)
+- `started_at`: `TIMESTAMP WITH TIME ZONE` (Not Null, default `now()`)
+- `finished_at`: `TIMESTAMP WITH TIME ZONE` (Nullable)
+- `error`: `TEXT` (Nullable — traceback when `status='failed'`)
+- **Indexes**: `(job_name, started_at)` (`ix_job_runs_job_name_started`)
 
 ## Isolation rule
 Every query that touches `usage_event`, `subscription`, or any

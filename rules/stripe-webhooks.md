@@ -17,15 +17,24 @@
 1. Verify the signature against the raw request body using
    `STRIPE_WEBHOOK_SECRET` **before** touching the payload. A bad
    signature → `400`, nothing else happens.
-2. Deduplicate by Stripe event ID. A replayed real event → processed
-   once; the second delivery is a no-op that still returns 2xx (so
-   Stripe doesn't keep retrying).
+2. Deduplicate by Stripe event ID (`webhook_events` primary key). A
+   replayed real event → processed once; the second delivery is a no-op
+   that still returns 2xx (so Stripe doesn't keep retrying). A
+   *concurrent* duplicate delivery that loses the unique-id insert race
+   is caught (`IntegrityError` → rollback) and answered as a duplicate,
+   never a 500.
 3. Handle: `checkout.session.completed`, `customer.subscription.updated`,
    `customer.subscription.deleted`. Update tenant plan/status from these
    only — the database mirrors Stripe, it does not originate billing
-   truth.
+   truth. An event that can't be matched to a local tenant is logged at
+   `WARNING`, not silently dropped. Billing-period timestamps that
+   Stripe does not supply are stored as `NULL` (never fabricated); the
+   quota/rollup layer falls back to the calendar month.
 4. Payment truth lives at Stripe. If local state and Stripe ever
-   disagree, Stripe wins (see stretch goal: reconciliation job).
+   disagree, Stripe wins — enforced continuously by the nightly
+   reconciliation job (`app/jobs/scheduler.py` →
+   `app/services/reconciliation_service.py`), not just best-effort at
+   webhook time.
 
 ## Required tests
 - Valid signed event → processed, tenant state updated.

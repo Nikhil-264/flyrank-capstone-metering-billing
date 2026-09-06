@@ -12,6 +12,8 @@ endpoints:
   - "GET /usage"
   - "POST /checkout"
   - "POST /webhooks/stripe"
+  - "GET /admin/jobs"
+  - "POST /admin/jobs/reconcile"
 stack:
   language: python
   framework: fastapi
@@ -22,12 +24,16 @@ stack:
   testing: pytest
 
 run: docker compose up --build
-test: docker compose exec api pytest
+test: docker compose run --rm api pytest
 
 env_required:
   - DATABASE_URL
   - STRIPE_SECRET_KEY
   - STRIPE_WEBHOOK_SECRET
+
+env_optional:
+  - STRIPE_PRO_PRICE_ID   # pin Pro price id; blank = auto-discover
+  - ENABLE_SCHEDULER      # default true; nightly reconciliation job
 
 scope:
   plans: 2          # Free, Pro
@@ -36,4 +42,4 @@ scope:
 
 non_goal: "Proration calculation on mid-cycle subscription downgrades, automatic PDF invoice generation, email dispatch of invoices, and implementing real authentication/authorization mechanisms (like API keys or JWT verification, scoping identity solely to header values) are non-goals for the core engine."
 
-status: exceptional  # in-progress | ships | solid | exceptional
+status: solid  # in-progress | ships | solid | exceptional
