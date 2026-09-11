@@ -394,7 +394,10 @@ updated. "Current usage this month" is computed by aggregating rows in a time wi
 **Trade-off accepted.** Every quota check and every `GET /usage` runs 2–4 aggregate
 queries instead of one indexed row read. At capstone scale that's microseconds; at
 scale you'd add the projection. We chose the simple, auditable model and made the index
-match the query exactly.
+match the query exactly — and then measured that "microseconds" claim instead of
+asserting it: `bench/index_benchmark.py` seeds 100,000 rows across 40 tenants and times
+the exact aggregate query with and without `ix_usage_events_tenant_type_created`:
+**6.25ms mean → 0.45ms mean, ~13x faster.** Full transcript: `bench/RESULTS.md`.
 
 ### 3.4 One event per `/generate` call (not two rows)
 
@@ -636,6 +639,20 @@ rejected with 429 — B never inserts.
 
 Proven by `test_quota_boundary_is_race_safe`: two concurrent attempts against a tenant
 pre-filled to 999 → exactly one 200, exactly one 429, final count exactly 1000.
+
+**Measured, not just proven once.** `bench/race_condition_benchmark.py` runs that same
+scenario 40 times against a copy of the check with `.with_for_update()` removed (the
+exact pre-hardening code path), then 40 times against the real, locked
+`QuotaService.check_quota`, and counts how often the tenant ends up over its limit:
+
+```
+BEFORE (no FOR UPDATE lock): 39/40 trials overcounted the 1000-call boundary (97.5%)
+AFTER  (FOR UPDATE lock): 0/40 trials overcounted the 1000-call boundary (0.0%)
+```
+
+**97.5% → 0%.** That number — not "we added a lock, trust us" — is what we'd put in
+front of an evaluator or a resume line, and it's what we'd point to if someone asked
+"how do you know the fix actually fixed it." Full transcript: `bench/RESULTS.md`.
 
 **Alternatives we considered:**
 
@@ -1225,7 +1242,11 @@ not to", not "we forgot".
    counter row — no long lock, still exactly-once. We'd keep the event log for audit and
    maintain the counter as a projection. We chose the lock because it's obviously
    correct and the scope doesn't stress it; we should be able to say exactly when we'd
-   switch.
+   switch. We've now measured the *correctness* side of that trade
+   (`bench/race_condition_benchmark.py`: 97.5% → 0% overcount rate across 40 trials) —
+   we have not yet measured the *throughput* side (requests/sec one tenant can push
+   through the locked path), which is exactly the number a "when would you switch"
+   follow-up is really asking for.
 
 2. **The dead `type='api_call'` path.** Tested, handled everywhere, emitted nowhere.
    Either wire a bulk-metering endpoint that uses it, or delete it and simplify
@@ -1293,4 +1314,5 @@ money.
 Python 3.12 · FastAPI + Pydantic v2 · async SQLAlchemy 2.0 + asyncpg · PostgreSQL 16 ·
 Alembic (2 migrations) · Stripe test mode (`stripe` SDK, pinned `<13`) · APScheduler
 (pinned `<4`) · pytest + pytest-asyncio + httpx · Docker Compose.
-**6 tables · 7 routes · 9 service modules · 7 test modules · 31 tests · 5 Layer-2 probes.**
+**6 tables · 7 routes · 9 service modules · 7 test modules · 31 tests · 5 Layer-2 probes ·
+2 reproducible benchmarks (`bench/`: 97.5%→0% concurrency fix, ~13x index speedup).**

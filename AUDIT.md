@@ -19,6 +19,9 @@
 | Token pricing categories | 4 | `app/config/pricing.py` (`*_TOKEN_RATE`) |
 | Stripe webhook event types handled | 3 | `app/api/webhooks/stripe.py` (`_HANDLED`) |
 | Plans / usage types | 2 / 2 | `app/db/seed.py`, `usage_events.type` |
+| Reproducible before/after benchmarks | 2 | `bench/index_benchmark.py`, `bench/race_condition_benchmark.py` |
+| Measured concurrency-lock effect | 97.5% → 0% overcount rate (40 trials) | `bench/RESULTS.md` §1 |
+| Measured index effect | 6.25ms → 0.45ms (~13x), 100K rows / 40 tenants | `bench/RESULTS.md` §2 |
 
 ---
 
@@ -384,6 +387,21 @@ select(func.coalesce(func.sum(UsageEvent.quantity), 0)).where(
 
 and the same shape for `tokens_used` and `token_breakdown`. Without this index every `POST /generate` (which calls `check_quota` → two aggregates) and every `GET /usage` would be a seq-scan of `usage_events`. Added in `0002` — this closes shared-requirement #4 ("right indexes").
 
+**Measured, not assumed.** `bench/index_benchmark.py` seeds 40 tenants × 2,500 rows (100,000 `usage_events` total) and runs the exact `UsageQuery` aggregate shape via `EXPLAIN (ANALYZE, FORMAT JSON)`, 15 timed runs, once against the `0001`-only schema (no composite index) and once with `0002`'s index added:
+
+```
+=== WITHOUT index (pre-hardening: migration 0001 only) ===
+no-index: mean=6.252 ms  median=6.207 ms  min=5.702 ms  max=7.822 ms
+
+=== WITH index (post-hardening: migration 0002) ===
+with-index: mean=0.454 ms  median=0.449 ms  min=0.357 ms  max=0.642 ms
+
+=== RESULT: composite index speeds up the quota/rollup aggregate query by 13.8x
+    (6.25 ms -> 0.45 ms) across 100,000 usage_events / 40 tenants ===
+```
+
+Full transcript and re-run instructions: `bench/RESULTS.md`.
+
 ### 2.4 `webhook_events` and `job_runs` as "already processed / already ran" ledgers
 
 **`webhook_events`** — the id column *is* the Stripe event id, so the ledger and the dedup mechanism are the same object. `app/api/webhooks/stripe.py:59-77`:
@@ -641,6 +659,14 @@ async def check_quota(db, tenant_id, requested_tokens) -> None:
 - **How long the lock is held:** from the `check_quota` SELECT until the request transaction ends — i.e. through `MeterService.record` and `await db.commit()` in `generate.py`. `check_quota` does not commit; the route does.
 - **How two concurrent calls serialize:** request A's SELECT acquires the lock. Request B's identical `SELECT ... FOR UPDATE` **blocks inside Postgres** (its `await` suspends). A finishes: reads 999, passes, INSERTs its `ai_token` row, `commit()` — lock released. B unblocks, and because Postgres re-reads under READ COMMITTED, B now sees A's committed row → `api_calls_used` returns 1000 → `1000 + 1 = 1001 > 1000` → **`QuotaExceededException` (429)**, and B never INSERTs.
 - **Proof:** `tests/test_quota.py::test_quota_boundary_is_race_safe` (`test_quota.py:211-265`) runs two `attempt()` coroutines under `asyncio.gather(..., return_exceptions=True)` against a tenant pre-filled to 999, and asserts exactly one returns `None` (success), exactly one is a `QuotaExceededException`, and `COUNT(usage_events) == 1000` — never 1001.
+- **Measured at scale.** `bench/race_condition_benchmark.py` runs the same two-concurrent-callers scenario 40 times against a copy of `check_quota` with `.with_for_update()` removed (i.e. exactly the pre-hardening code), then 40 times against the real, locked `QuotaService.check_quota`:
+
+```
+BEFORE (no FOR UPDATE lock): 39/40 trials overcounted the 1000-call boundary (97.5%)
+AFTER  (FOR UPDATE lock): 0/40 trials overcounted the 1000-call boundary (0.0%)
+```
+
+  i.e. the lock takes the quota-boundary overcount rate under concurrent load from **97.5% to 0%**. Full transcript and re-run instructions: `bench/RESULTS.md`.
 
 ### 4.3 The boundary rule
 
@@ -1296,6 +1322,18 @@ GET /admin/jobs -> [ {... "status":"success" ...} ]
 ```
 
 > **Re-run note for this audit:** Docker Desktop on this Windows host did not come back up within several minutes of being launched (the daemon pipe `//./pipe/dockerDesktopLinuxEngine` stayed absent), so `docker compose run --rm api pytest -v` could not be re-executed *for this document*. All output above was produced earlier in this same working session against the identical commit and is reproduced verbatim. To reproduce: start Docker Desktop, then `docker compose run --rm api pytest -v`; for probes `docker compose up -d && docker compose exec api python verify_probes.py`.
+
+### 9.5 `bench/` — a third evidence category, separate from pytest and the probes
+
+`pytest` proves a property holds (a test passes or fails); the Layer-2 probes prove the
+assembled system behaves correctly once. Neither tells you *how much* a fix mattered.
+`bench/index_benchmark.py` and `bench/race_condition_benchmark.py` exist for that: they
+reconstruct the pre-hardening code path (no composite index; no `FOR UPDATE` lock)
+side-by-side with the current code and measure the delta with real Postgres timings /
+real trial counts, not estimates. Both are referenced above (§2.3, §4.2) and their full
+output lives in `bench/RESULTS.md`. Neither runs in CI or `pytest` — they're
+one-off/on-demand measurement scripts, not regression tests, and take longer to run
+(they seed 100K rows / run 80 sequential trials).
 
 ---
 
